@@ -1,18 +1,16 @@
-const API_URL = 'https://api.anthropic.com/v1/messages'
-const MODEL   = 'claude-sonnet-4-20250514'
+const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
 
 const SYSTEM_PROMPT =
   'You are a weekly planning assistant. Analyse the user\'s tasks, ' +
-  'optionally use web search to better understand each one, then score difficulty and propose a balanced plan. ' +
+  'then score difficulty and propose a balanced plan. ' +
   'Respond ONLY with valid JSON — no markdown, no text outside the JSON object.'
 
 function buildPrompt(rawText) {
   return `Here are my tasks for the week:\n\n${rawText.trim()}\n\n` +
     'For every distinct task or to-do item:\n' +
-    '1. Use web search if it helps you understand the task.\n' +
-    '2. Assign difficulty: 1 = trivial, 2 = easy, 3 = medium, 4 = hard, 5 = very hard.\n' +
-    '3. Write ONE justification sentence (max 12 words) for the score.\n' +
-    '4. Distribute all tasks across Monday–Sunday so daily difficulty totals are roughly equal.\n\n' +
+    '1. Assign difficulty: 1 = trivial, 2 = easy, 3 = medium, 4 = hard, 5 = very hard.\n' +
+    '2. Write ONE justification sentence (max 12 words) for the score.\n' +
+    '3. Distribute all tasks across Monday–Sunday so daily difficulty totals are roughly equal.\n\n' +
     'Respond with ONLY this JSON (no markdown fences, no extra text):\n' +
     '{\n' +
     '  "tasks": [\n' +
@@ -31,28 +29,33 @@ function buildPrompt(rawText) {
     'Every title in "plan" must exactly match a title in "tasks". Include all seven days even if empty.'
 }
 
-async function post(body, apiKey) {
-  const res = await fetch(API_URL, {
+async function post(rawText, apiKey) {
+  const res = await fetch(`${API_URL}?key=${encodeURIComponent(apiKey)}`, {
     method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      // Required for direct browser access — user supplies their own key
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify(body),
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: SYSTEM_PROMPT }],
+      },
+      contents: [
+        { role: 'user', parts: [{ text: buildPrompt(rawText) }] },
+      ],
+      generationConfig: {
+        maxOutputTokens: 4096,
+        responseMimeType: 'application/json',
+      },
+    }),
   })
   const data = await res.json()
   return { res, data }
 }
 
 function parseResponse(data) {
-  const textBlock = (data.content ?? []).find(b => b.type === 'text')
-  if (!textBlock?.text) throw new Error('empty_response')
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+  if (!text) throw new Error('empty_response')
 
-  // Strip markdown code fences Claude sometimes wraps around JSON
-  let json = textBlock.text.trim()
+  // Strip markdown code fences just in case
+  let json = text.trim()
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```\s*$/i, '')
     .trim()
@@ -78,40 +81,24 @@ function parseResponse(data) {
 }
 
 /**
- * Call the Anthropic API to score tasks and build a weekly plan.
- *
- * Tries with the web_search_20250305 tool first; falls back to a plain call
- * if that tool is not available on the account / model.
+ * Call the Gemini API to score tasks and build a weekly plan.
  *
  * @param {string} rawText  Free-form user input
- * @param {string} apiKey   User's Anthropic API key from settings
+ * @param {string} apiKey   User's Gemini API key from settings
  * @returns {{ tasks: Array, plan: Object }}
  */
 export async function generateWeeklyPlan(rawText, apiKey) {
-  const base = {
-    model: MODEL,
-    max_tokens: 4096,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: buildPrompt(rawText) }],
-  }
-
-  // --- Attempt 1: with web search tool ---
-  let { res, data } = await post(
-    { ...base, tools: [{ type: 'web_search_20250305', name: 'web_search' }] },
-    apiKey,
-  )
-
-  // If 400 and the error mentions the tool, retry without it
-  if (!res.ok && res.status === 400) {
-    const msg = (data?.error?.message ?? '').toLowerCase()
-    if (msg.includes('tool') || msg.includes('web_search') || msg.includes('unknown')) {
-      ;({ res, data } = await post(base, apiKey))
-    }
-  }
+  const { res, data } = await post(rawText, apiKey)
 
   if (!res.ok) {
-    const err = new Error(data?.error?.type ?? 'api_error')
-    err.status = res.status
+    const status = data?.error?.code ?? res.status
+    const message = data?.error?.status ?? data?.error?.message ?? 'api_error'
+    const err = new Error(
+      message === 'UNAUTHENTICATED' ? 'authentication_error' :
+      message === 'RESOURCE_EXHAUSTED' ? 'rate_limit_error' :
+      'api_error'
+    )
+    err.status = status === 'UNAUTHENTICATED' ? 401 : status === 'RESOURCE_EXHAUSTED' ? 429 : res.status
     err.detail = data?.error?.message ?? ''
     throw err
   }
