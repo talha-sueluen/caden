@@ -30,9 +30,16 @@ export default function TaskList({ tasks, onToggle, onDelete }) {
 
       {done.length > 0 && (
         <section>
-          <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-neutral-400">
-            {t('tasks.done_heading', lang)} · {done.length}
-          </h3>
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="text-xs font-medium uppercase tracking-wider text-neutral-400">
+              {t('tasks.done_heading', lang)}
+            </h3>
+            <span className="inline-flex items-center justify-center rounded-full
+                             bg-neutral-200 text-neutral-500 text-[10px] font-semibold
+                             w-4 h-4 leading-none">
+              {done.length}
+            </span>
+          </div>
           <ul className="space-y-2">
             {done.map(task => (
               <TaskItem key={task.id} task={task} onToggle={onToggle} onDelete={onDelete} />

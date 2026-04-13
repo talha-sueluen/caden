@@ -64,8 +64,10 @@ export default function BottomNav({ active, onChange }) {
   const { lang } = useLang()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-neutral-100
-                    flex justify-around safe-area-inset-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50
+                    bg-white/90 backdrop-blur-md border-t border-neutral-100
+                    flex justify-around safe-area-inset-bottom
+                    shadow-[0_-1px_12px_rgba(0,0,0,0.06)]">
       {TABS.map(tab => {
         const isActive = tab.id === active
         return (
@@ -76,7 +78,11 @@ export default function BottomNav({ active, onChange }) {
                         transition-colors duration-150
                         ${isActive ? 'text-violet-600' : 'text-neutral-400 hover:text-neutral-600'}`}
           >
-            {tab.icon}
+            <span className={`flex items-center justify-center rounded-xl w-10 h-7
+                              transition-colors duration-150
+                              ${isActive ? 'bg-violet-100' : ''}`}>
+              {tab.icon}
+            </span>
             {t(tab.labelKey, lang)}
           </button>
         )

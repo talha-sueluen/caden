@@ -4,49 +4,64 @@ import { t, LOCALE_MAP } from '../i18n/index'
 import AddTaskForm from '../components/AddTaskForm'
 import TaskList from '../components/TaskList'
 
-function todayLabel(locale) {
-  return new Date().toLocaleDateString(locale, {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  })
+function weekdayLabel(locale) {
+  return new Date().toLocaleDateString(locale, { weekday: 'long' })
+}
+
+function dateLabel(locale) {
+  return new Date().toLocaleDateString(locale, { month: 'long', day: 'numeric' })
 }
 
 export default function TodayPage() {
   const { tasks, addTask, toggleTask, deleteTask } = useTasks()
   const { lang } = useLang()
   const locale = LOCALE_MAP[lang] ?? 'tr-TR'
-  const pendingCount = tasks.filter(t => !t.completed).length
+  const pendingCount = tasks.filter(tk => !tk.completed).length
+  const doneCount = tasks.length - pendingCount
+  const progress = tasks.length > 0 ? (doneCount / tasks.length) * 100 : 0
 
   return (
-    <div className="px-4 pt-8 pb-24">
-      <header className="mb-8">
-        <h1 className="text-2xl font-medium text-neutral-800 tracking-tight">
+    <div className="pb-24">
+      {/* Hero header */}
+      <header className="relative overflow-hidden bg-gradient-to-br from-violet-500 to-violet-700
+                         px-6 pt-12 pb-8 rounded-b-[2.5rem] mb-6
+                         shadow-[0_8px_32px_rgba(124,58,237,0.28)]">
+        {/* Decorative circles */}
+        <div className="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/10 pointer-events-none" />
+        <div className="absolute -right-2 top-16 w-24 h-24 rounded-full bg-white/[0.07] pointer-events-none" />
+
+        <p className="text-sm font-medium text-violet-200 mb-0.5 capitalize">
+          {weekdayLabel(locale)}
+        </p>
+        <h1 className="text-3xl font-semibold text-white tracking-tight leading-tight">
           {t('today.title', lang)}
         </h1>
-        <p className="mt-1 text-sm text-neutral-400">{todayLabel(locale)}</p>
+        <p className="mt-0.5 text-sm text-violet-200">{dateLabel(locale)}</p>
+
+        {/* Integrated progress bar */}
+        {tasks.length > 0 && (
+          <div className="mt-5">
+            <div className="flex justify-between text-xs text-violet-200 mb-1.5">
+              <span>{pendingCount} {t('today.remaining', lang)}</span>
+              <span>{doneCount} / {tasks.length} {t('today.done', lang)}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-white/20 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-white transition-all duration-500"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        )}
       </header>
 
-      {tasks.length > 0 && (
+      <div className="px-4">
         <div className="mb-5">
-          <div className="flex justify-between text-xs text-neutral-400 mb-1">
-            <span>{pendingCount} {t('today.remaining', lang)}</span>
-            <span>{tasks.length - pendingCount} / {tasks.length} {t('today.done', lang)}</span>
-          </div>
-          <div className="h-1 rounded-full bg-neutral-200 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-violet-500 transition-all duration-300"
-              style={{ width: `${((tasks.length - pendingCount) / tasks.length) * 100}%` }}
-            />
-          </div>
+          <AddTaskForm onAdd={addTask} />
         </div>
-      )}
 
-      <div className="mb-6">
-        <AddTaskForm onAdd={addTask} />
+        <TaskList tasks={tasks} onToggle={toggleTask} onDelete={deleteTask} />
       </div>
-
-      <TaskList tasks={tasks} onToggle={toggleTask} onDelete={deleteTask} />
     </div>
   )
 }

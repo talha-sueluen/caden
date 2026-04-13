@@ -20,14 +20,19 @@ export default function AddTaskForm({ onAdd }) {
         onChange={e => setValue(e.target.value)}
         placeholder={t('tasks.add_placeholder', lang)}
         className="flex-1 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm
-                   placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                   placeholder:text-neutral-400 ring-1 ring-transparent
+                   focus:outline-none focus:border-violet-300 focus:ring-violet-200
+                   shadow-[0_1px_3px_rgba(0,0,0,0.05)]
+                   transition-shadow duration-150"
       />
       <button
         type="submit"
         disabled={!value.trim()}
         className="rounded-xl bg-violet-500 px-5 py-3 text-sm font-medium text-white
-                   transition-colors hover:bg-violet-600 active:bg-violet-700
-                   disabled:opacity-40 disabled:cursor-not-allowed"
+                   hover:bg-violet-600 active:bg-violet-700 active:scale-95
+                   shadow-[0_2px_8px_rgba(124,58,237,0.35)]
+                   transition-all duration-150
+                   disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
       >
         {t('tasks.add_button', lang)}
       </button>
